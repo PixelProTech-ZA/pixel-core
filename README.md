@@ -2,16 +2,14 @@
 
 A lightweight, **text-only** technology answer engine by **PixelProTech Solutions**.
 Ask about Windows/Linux, hardware, Wi-Fi, software, programming basics, cybersecurity basics and backups.
-Plain HTML/CSS/JS frontend on GitHub Pages → a small Cloudflare Worker → Groq's chat-completions API.
+Plain HTML/CSS/JS frontend on GitHub Pages → a small Cloudflare Worker → Gemini API through its OpenAI-compatible chat-completions endpoint.
 
-> **Status: built and tested locally. Not deployed.** Nothing in this repo has been published, and no real Groq
-> request has been made yet (no API key was available while building). Follow *Deploy* below, then run the
-> *Live checklist* to confirm it works for real.
+> **Status: frontend published to GitHub Pages; backend not yet verified live.** The Cloudflare Worker still needs deployment and connection to the frontend. No real Gemini chat completion has been verified yet.
 
 ## Architecture
 
 ```
-Browser (GitHub Pages, site/)  ──POST /api/chat──▶  Cloudflare Worker (worker/)  ──▶  Groq API
+Browser (GitHub Pages, site/)  ──POST /api/chat──▶  Cloudflare Worker (worker/)  ──▶  Gemini API
   vanilla HTML/CSS/JS                                 validation · CORS allowlist        (key lives only
   safe text rendering                                 limits · link guard · prompt        here, as a secret)
 ```
@@ -29,7 +27,7 @@ pixel-core/
     ├── package.json  wrangler.toml  .dev.vars.example
     ├── src/
     │   ├── index.js                routes, validation, CORS, limits, error mapping
-    │   ├── provider.js             the ONLY Groq-specific file (swap providers here)
+    │   ├── provider.js             the provider adapter for Gemini (swap providers here)
     │   ├── prompt.js               system prompt + official URL roots
     │   ├── knowledge.js            the verified PixelProTech facts (only company source)
     │   └── urlguard.js             removes links to unknown domains from answers
@@ -41,7 +39,7 @@ violet `#7b2fff` secondary, gold `#d8b96a` used sparingly (caution labels), mono
 
 ## Deploy
 
-You need: a GitHub account, a free Cloudflare account, a free Groq account with an API key, Node 20+.
+You need: a GitHub account, a free Cloudflare account, a Google AI Studio account with a Gemini API key, Node 20+.
 
 ### 1. Create the GitHub repository
 Create a new repo (e.g. `pixel-core`) on GitHub, then from this folder:
@@ -65,8 +63,8 @@ npm install            # installs wrangler (the only dependency)
 npx wrangler login
 ```
 
-### 5. Add the Groq key as an encrypted secret
-Create a key at the Groq console, then:
+### 5. Add the Gemini key as an encrypted secret
+Create a Gemini API key in Google AI Studio, then:
 ```bash
 npx wrangler secret put GEMINI_API_KEY      # paste the key when prompted
 ```
@@ -79,7 +77,7 @@ curl -s https://generativelanguage.googleapis.com/v1beta/openai/models -H "Autho
 ```
 Then set `GEMINI_MODEL` in `worker/wrangler.toml` to a chat model from that list. The default in the file
 (`gemini-2.5-flash`) is a placeholder that I could **not** verify against your account.
-Groq's reference: https://ai.google.dev/gemini-api/docs/openai
+Gemini API reference: https://ai.google.dev/gemini-api/docs/openai
 
 ### 7. Set the allowed origin
 In `worker/wrangler.toml` set `ALLOWED_ORIGIN = "https://<you>.github.io"`
@@ -105,7 +103,7 @@ Run the **Live checklist** below.
 CORS is **not** authentication — anyone can call the Worker directly. The Worker has an in-memory per-IP limit
 and a concurrency cap, but those are per-isolate and are *not* enough on their own. In the Cloudflare dashboard
 add a **Rate limiting rule** (Security → WAF → Rate limiting rules) for the Worker's `/api/chat` path, and keep
-Groq's own usage limits in mind. Also review the privacy text at the bottom of `site/index.html`.
+Gemini API quota and usage limits in mind. Also review the privacy text at the bottom of `site/index.html`.
 
 ## Run locally
 ```bash
@@ -150,14 +148,13 @@ Run on the build machine, Oct 2026.
 
 | Suite | Result | Notes |
 |---|---|---|
-| `cd worker && npm test` — 34 unit tests (Node 22) | **34 / 34 passed** | Groq is **mocked**. Covers: answer returned; system prompt/model/key sent; history trimming; empty/whitespace/oversized/invalid messages; client `system` role rejected; invalid JSON; unsupported methods; wrong content type; unapproved/missing origin; preflight; missing and invalid key → safe errors with no leak; provider 429 → neutral message + Retry-After; timeout → 504; provider 500/network/malformed → safe 502; link guard; per-IP limiter; concurrency cap; `/health` leaks nothing; renderer escapes HTML and refuses `javascript:` links; no unsafe HTML APIs in site code; no key-like strings in `site/`. |
+| `cd worker && npm test` — 34 unit tests (Node 22) | **34 / 34 passed** | The Gemini provider is **mocked**. Covers: answer returned; system prompt/model/key sent; history trimming; empty/whitespace/oversized/invalid messages; client `system` role rejected; invalid JSON; unsupported methods; wrong content type; unapproved/missing origin; preflight; missing and invalid key → safe errors with no leak; provider 429 → neutral message + Retry-After; timeout → 504; provider 500/network/malformed → safe 502; link guard; per-IP limiter; concurrency cap; `/health` leaks nothing; renderer escapes HTML and refuses `javascript:` links; no unsafe HTML APIs in site code; no key-like strings in `site/`. |
 | Browser UI test — 52 checks, Chromium via Playwright, desktop 1280×800 and mobile 390×780 | **52 / 52 passed** | Server responses mocked. Covers: welcome, counter, empty send ignored, hostile answer rendered as text (no script runs), safe links, history carried, 429/503/offline/timeout messages with input restored and UI unlocked, over-limit blocked, clear chat, example chips, no horizontal overflow, no page errors, page works under its strict CSP. |
-| `wrangler dev` smoke test (real Workers runtime, local) | passed | `/health` OK; bad origin → 403; no key → safe 503; invalid JSON → 400; PUT → 405. |
+| `wrangler dev` smoke test | **Not run successfully** | The local Workers runtime is blocked by this system's GLIBC compatibility. Do not treat local runtime checks as passed. |
 
 ### Not run (be aware)
-- **No real Groq request** — no key was available, so answer quality, the real model id, real 429 behaviour and
-  real latency are **unverified**. The live-answer items below must be checked after you deploy.
-- **Not deployed** to GitHub Pages or Cloudflare; no live URL exists.
+- **No real Gemini chat completion verified yet** — the API key was accepted by the model-list endpoint, but a real answer, model response, quota behaviour and latency remain unverified. Check these after deploying the Worker.
+- **GitHub Pages is published.** The Cloudflare Worker has not yet been confirmed deployed and connected, so live chat is not yet verified.
 - Cloudflare rate-limiting rules, Safari/Firefox, real phones and screen readers were not tested.
 - The link guard and prompt reduce, but cannot eliminate, wrong or outdated answers.
 
@@ -172,7 +169,7 @@ Run on the build machine, Oct 2026.
 8. Open on a phone → usable, no sideways scrolling.
 
 ## Known limitations
-- Free-tier quota and model availability are controlled by Groq and may change; the app shows a neutral message when exhausted.
+- Gemini API quota and model availability can change; the app shows a neutral message when the provider is unavailable or quota is exhausted.
 - In-memory rate limiting is per Worker instance; use Cloudflare rules for real abuse control.
 - No retrieval/search: answers come from the model's training and may be outdated.
 - No accounts, saved chats, billing or analytics (by design for release 1).
