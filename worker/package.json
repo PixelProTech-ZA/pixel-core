@@ -1,0 +1,15 @@
+{
+  "name": "pixel-core-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Pixel Core backend — Cloudflare Worker proxying chat requests to the AI provider",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

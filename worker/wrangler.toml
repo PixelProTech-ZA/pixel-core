@@ -1,0 +1,19 @@
+name = "pixel-core-api"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+
+# Public, non-secret settings. The API key is NOT here — it is an encrypted
+# secret:  npx wrangler secret put GEMINI_API_KEY
+[vars]
+# Origin ONLY (scheme + host, no path, no trailing slash). Comma-separate to
+# allow more than one, e.g. "https://you.github.io,http://localhost:8080".
+ALLOWED_ORIGIN = "https://YOUR-GITHUB-USERNAME.github.io"
+
+# Check what your Groq account can use first (see README step 6), then set it.
+GEMINI_MODEL = "gemini-2.5-flash"
+
+# Optional tuning (defaults shown). Lower these to stretch the free tier.
+MAX_TOKENS = "700"
+TIMEOUT_MS = "20000"
+HISTORY_MESSAGES = "8"
+RATE_LIMIT_PER_MIN = "20"

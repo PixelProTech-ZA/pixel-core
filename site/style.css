@@ -1,0 +1,161 @@
+/* Pixel Core — PixelProTech brand palette (from the 2026 corporate profile):
+   near-black bg, teal primary, violet secondary, gold used sparingly. */
+:root {
+  --bg: #07070a;
+  --panel: #0e0e13;
+  --panel-2: #1a1a22;
+  --line: #24242e;
+  --teal: #00d4aa;
+  --violet: #7b2fff;
+  --gold: #d8b96a;
+  --text: #f1eefa;
+  --text-2: #c7c1da;
+  --text-3: #9a90b8;
+  --danger: #ff6b81;
+  --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Courier New", monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text-2);
+  font: 16px/1.55 var(--sans);
+  -webkit-text-size-adjust: 100%;
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+.app {
+  display: flex; flex-direction: column;
+  height: 100vh; height: 100dvh;
+  max-width: 860px; margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* ---- header ---- */
+.top { padding: 28px 0 14px; flex: none; }
+.eyebrow {
+  margin: 0 0 10px; font: 12px/1 var(--mono);
+  letter-spacing: .16em; color: var(--teal); text-transform: uppercase;
+}
+h1 {
+  margin: 0; color: var(--text);
+  font-size: clamp(1.5rem, 4.5vw, 2.1rem); line-height: 1.15;
+  letter-spacing: .01em; text-transform: none;
+}
+.sub { margin: 8px 0 0; color: var(--text-3); font-size: .98rem; }
+.rule { width: 56px; height: 2px; background: var(--teal); margin-top: 16px; }
+
+/* ---- conversation ---- */
+.main { flex: 1; min-height: 0; display: flex; }
+.chat {
+  flex: 1; overflow-y: auto; padding: 8px 2px 16px;
+  display: flex; flex-direction: column; gap: 14px;
+  scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+}
+.chat:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
+
+.msg {
+  max-width: 100%; padding: 12px 15px;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--panel); overflow-wrap: anywhere;
+}
+.msg .who {
+  display: block; margin-bottom: 6px;
+  font: 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase;
+}
+.msg.bot .who { color: var(--teal); }
+.msg.user {
+  align-self: flex-end; max-width: 88%;
+  background: var(--panel-2); border-color: #2d2d3a; border-left: 3px solid var(--violet);
+}
+.msg.user .who { color: var(--text-3); }
+.msg.user .body { color: var(--text); white-space: pre-wrap; }
+.msg.error { border-color: #5a2a36; border-left: 3px solid var(--danger); }
+.msg.error .who { color: var(--danger); }
+
+.body p { margin: 0 0 .7em; }
+.body p:last-child, .body ul:last-child, .body ol:last-child, .body pre:last-child { margin-bottom: 0; }
+.body ul, .body ol { margin: 0 0 .7em; padding-left: 1.3em; }
+.body li { margin: .2em 0; }
+.body strong { color: var(--text); }
+.body code {
+  font: .88em var(--mono); color: var(--text);
+  background: var(--panel-2); border: 1px solid var(--line);
+  padding: .08em .4em; border-radius: 4px;
+}
+.body pre {
+  margin: 0 0 .8em; padding: 12px 14px; overflow-x: auto;
+  background: #050507; border: 1px solid var(--line); border-radius: 8px;
+}
+.body pre code { background: none; border: 0; padding: 0; font-size: .86rem; line-height: 1.5; }
+.body a { color: var(--teal); text-underline-offset: 2px; }
+.body a:hover { color: var(--text); }
+
+.sect { margin: 0 0 .9em; }
+.sect:last-child { margin-bottom: 0; }
+.sect-label {
+  display: block; margin-bottom: 4px;
+  font: 12px/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--teal);
+}
+.sect-caution { border-left: 2px solid var(--gold); padding-left: 10px; }
+.sect-caution .sect-label { color: var(--gold); }
+
+/* ---- dock: examples + composer ---- */
+.dock { flex: none; padding: 6px 0 max(14px, env(safe-area-inset-bottom)); }
+.examples { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.chip {
+  font: 12.5px/1.2 var(--sans); color: var(--text-2);
+  background: transparent; border: 1px solid var(--line); border-radius: 999px;
+  padding: 7px 12px; cursor: pointer;
+}
+.chip:hover { border-color: var(--teal); color: var(--text); }
+.examples[hidden] { display: none; }
+
+.composer {
+  border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+  padding: 10px 12px 8px;
+}
+.composer:focus-within { border-color: var(--violet); }
+textarea {
+  width: 100%; resize: none; border: 0; outline: 0; background: transparent;
+  color: var(--text); font: 16px/1.5 var(--sans); max-height: 30vh;
+}
+textarea::placeholder { color: #6f6788; }
+.bar { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+.spacer { flex: 1; }
+.counter { font: 12px var(--mono); color: var(--text-3); }
+.counter.warn { color: var(--gold); }
+.counter.over { color: var(--danger); }
+
+.btn {
+  font: 600 13px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase;
+  border-radius: 8px; padding: 10px 16px; cursor: pointer; min-height: 38px;
+}
+.btn.primary { background: var(--teal); color: #04120e; border: 1px solid var(--teal); }
+.btn.primary:hover { background: #12e6bd; }
+.btn.ghost { background: transparent; color: var(--text-3); border: 1px solid var(--line); }
+.btn.ghost:hover { color: var(--text); border-color: var(--text-3); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn:focus-visible, .chip:focus-visible, .body a:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
+
+.privacy { margin: 10px 2px 0; font-size: 11.5px; line-height: 1.5; color: var(--text-3); }
+
+@media (max-width: 560px) {
+  .app { padding: 0 14px; }
+  .top { padding: 14px 0 8px; }
+  h1 { font-size: 1.4rem; }
+  .sub { font-size: .85rem; margin-top: 4px; }
+  .rule { display: none; }
+  .privacy { font-size: 11px; }
+  .msg.user { max-width: 94%; }
+  .chip { font-size: 12px; padding: 6px 10px; }
+}
+@media (max-height: 560px) { .privacy, .rule { display: none; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }

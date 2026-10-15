@@ -1,0 +1,4 @@
+# Copy to .dev.vars for LOCAL development only (.dev.vars is git-ignored).
+# Paste your real key into .dev.vars, never into this example file.
+GEMINI_API_KEY=
+ALLOWED_ORIGIN=http://localhost:8080
