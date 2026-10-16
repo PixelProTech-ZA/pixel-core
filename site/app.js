@@ -16,6 +16,8 @@
   var clearBtn = document.getElementById('clear');
   var counter = document.getElementById('counter');
   var examples = document.getElementById('examples');
+  var connectionStatus = document.getElementById('connection-status');
+  var connectionLabel = document.getElementById('connection-label');
 
   var history = [];
   var busy = false;
@@ -57,6 +59,84 @@
   }
 
   function showWelcome() { addMessage('bot', WELCOME); }
+
+  function setConnection(state, label) {
+    if (!connectionStatus || !connectionLabel) return;
+    connectionStatus.setAttribute('data-state', state);
+    connectionLabel.textContent = label;
+  }
+
+  function healthUrl() {
+    try {
+      var url = new URL(cfg.API_URL);
+      url.pathname = '/health';
+      url.search = '';
+      url.hash = '';
+      return url.href;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  var healthCheck = null;
+
+  function checkServer() {
+    if (!navigator.onLine) {
+      setConnection('offline', 'Device offline · waiting for network');
+      return;
+    }
+
+    var url = healthUrl();
+    if (!url) {
+      setConnection('error', 'Server address is not configured');
+      return;
+    }
+
+    if (healthCheck) healthCheck.abort();
+    healthCheck = new AbortController();
+    var activeCheck = healthCheck;
+    var timer = setTimeout(function () { activeCheck.abort(); }, 6000);
+
+    setConnection('checking', 'Checking Pixel Core server…');
+
+    fetch(url, {
+      method: 'GET',
+      cache: 'no-store',
+      credentials: 'omit',
+      referrerPolicy: 'no-referrer',
+      signal: activeCheck.signal
+    })
+      .then(function (res) {
+        if (healthCheck !== activeCheck) return;
+        if (res.ok) {
+          setConnection('connected', 'Pixel Core server reachable');
+        } else {
+          setConnection('error', 'Network available · server returned ' + res.status);
+        }
+      })
+      .catch(function () {
+        if (healthCheck !== activeCheck) return;
+        if (!navigator.onLine) {
+          setConnection('offline', 'Device offline · waiting for network');
+        } else {
+          setConnection('error', 'Network available · server not responding');
+        }
+      })
+      .then(function () {
+        clearTimeout(timer);
+        if (healthCheck === activeCheck) healthCheck = null;
+      });
+  }
+
+  window.addEventListener('offline', function () {
+    if (healthCheck) healthCheck.abort();
+    setConnection('offline', 'Device offline · waiting for network');
+  });
+
+  window.addEventListener('online', function () {
+    setConnection('checking', 'Network restored · checking server…');
+    checkServer();
+  });
 
   function updateCounter() {
     var n = input.value.length;
@@ -120,6 +200,7 @@
     autosize();
 
     setBusy(true);
+    setConnection('checking', 'Contacting Pixel Core…');
     var pending = addMessage('bot', 'Working on it…');
     pending.querySelector('.who').textContent = 'Pixel Core';
 
@@ -148,6 +229,7 @@
           var data = null;
           try { data = JSON.parse(raw); } catch (e) { /* non-JSON body */ }
           if (!res.ok) {
+            setConnection('connected', 'Pixel Core server responded');
             var code = data && data.error && data.error.code;
             var msg = data && data.error && data.error.message;
             fail(errorFor(res.status, code, msg));
@@ -157,6 +239,7 @@
             fail('Pixel Core sent back an unreadable answer. Please try again.');
             return;
           }
+          setConnection('connected', 'Pixel Core server reachable');
           history.push({ role: 'assistant', content: data.reply });
           pending.remove();
           addMessage('bot', data.reply);
@@ -167,7 +250,14 @@
           if (controller && controller.cleared) return; // user cleared the chat: nothing to report
           fail('The answer took too long. Please try again.');
         } else {
-          fail('Cannot reach Pixel Core. Check your internet connection and try again.');
+          if (!navigator.onLine) {
+            setConnection('offline', 'Device offline · your question is ready to retry');
+          } else {
+            setConnection('error', 'Could not reach Pixel Core · your question is ready to retry');
+          }
+          fail(navigator.onLine
+            ? 'Cannot reach Pixel Core. Your question is still here. Check your connection and retry.'
+            : 'Your device is offline. Your question is still here. Reconnect, then retry.');
         }
       })
       .then(function () {
@@ -206,4 +296,5 @@
 
   showWelcome();
   updateCounter();
+  checkServer();
 })();

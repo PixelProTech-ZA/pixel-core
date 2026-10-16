@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07070a">
+  <title>Offline · Pixel Core</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center;
+      padding: 24px; background: #07070a; color: #f1eefa;
+      font: 16px/1.6 system-ui, sans-serif;
+    }
+    main { max-width: 440px; }
+    .mark { color: #00d4aa; font: 700 12px monospace; letter-spacing: .14em; }
+    h1 { margin: 20px 0 8px; font-size: clamp(28px, 7vw, 40px); }
+    p { color: #c7c1da; }
+    button {
+      margin-top: 12px; padding: 12px 18px; border: 0; border-radius: 8px;
+      background: #00d4aa; color: #07070a; font: 700 14px system-ui;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="mark">[ PIXEL CORE ]</div>
+    <h1>Connection interrupted.</h1>
+    <p>The app is available, but AI answers need an internet connection.
+       Reconnect and try again. Your conversation is not stored by Pixel Core.</p>
+    <button type="button" onclick="location.reload()">Try again</button>
+  </main>
+</body>
+</html>
