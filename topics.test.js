@@ -75,3 +75,12 @@ test('every topic in the real config.js is a non-empty question within the lengt
     assert.ok(topics[k].trim().length > 10 && topics[k].length <= 1000, k);
   }
 });
+
+test('footer keeps the third-party AI disclosure and the company line', () => {
+  const html = read('index.html');
+  assert.match(html, /third-party AI service/);
+  assert.match(html, /outside South Africa/);
+  assert.match(html, /PixelProTech Solutions \(Pty\) Ltd/);
+  assert.match(html, /<details class="more">/);
+  assert.ok(!/OpenRouter|Groq/i.test(html), 'wrong provider named');
+});

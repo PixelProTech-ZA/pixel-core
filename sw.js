@@ -1,5 +1,5 @@
 /* Pixel Core service worker: static shell only. */
-const CACHE_NAME = "pixel-core-shell-v2";
+const CACHE_NAME = "pixel-core-shell-v3";
 const SHELL_FILES = [
   "./",
   "./index.html",
