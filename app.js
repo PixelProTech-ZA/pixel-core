@@ -99,8 +99,12 @@
 
     setConnection('checking', 'Checking Pixel Core server…');
 
+    // mode 'no-cors': /health sends no CORS headers, so the browser would hide the
+    // reply and report a false "server not responding". An opaque response means
+    // the server was reached; real errors still show up when a question is sent.
     fetch(url, {
       method: 'GET',
+      mode: 'no-cors',
       cache: 'no-store',
       credentials: 'omit',
       referrerPolicy: 'no-referrer',
@@ -108,7 +112,7 @@
     })
       .then(function (res) {
         if (healthCheck !== activeCheck) return;
-        if (res.ok) {
+        if (res.ok || res.type === 'opaque') {
           setConnection('connected', 'Pixel Core server reachable');
         } else {
           setConnection('error', 'Network available · server returned ' + res.status);

@@ -23,7 +23,7 @@ function el() {
   return e;
 }
 
-function boot(search, topics) {
+function boot(search, topics, fetchImpl) {
   const ids = {};
   const document = {
     getElementById(id) { return (ids[id] = ids[id] || el()); },
@@ -42,10 +42,10 @@ function boot(search, topics) {
   const ctx = vm.createContext({
     window: win, document, URL, URLSearchParams, AbortController, setTimeout, clearTimeout,
     navigator: { onLine: true },
-    fetch: (...a) => { fetchCalls.push(a); return new Promise(() => {}); },
+    fetch: (...a) => { fetchCalls.push(a); return fetchImpl ? fetchImpl(...a) : new Promise(() => {}); },
   });
   vm.runInContext(read('app.js'), ctx);
-  return { input: ids.input, messages, fetchCalls };
+  return { input: ids.input, messages, fetchCalls, ids };
 }
 
 const TOPICS = { 'slow-startup': 'My laptop is slow after startup. What should I check?' };
@@ -83,4 +83,19 @@ test('footer keeps the third-party AI disclosure and the company line', () => {
   assert.match(html, /PixelProTech Solutions \(Pty\) Ltd/);
   assert.match(html, /<details class="more">/);
   assert.ok(!/OpenRouter|Groq/i.test(html), 'wrong provider named');
+});
+
+test('health check: an opaque cross-origin reply counts as reachable (no false "not responding")', async () => {
+  const t = boot('', TOPICS, () => Promise.resolve({ type: 'opaque', ok: false, status: 0 }));
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(t.ids['connection-label'].textContent, 'Pixel Core server reachable');
+  const health = t.fetchCalls.find((c) => /\/health$/.test(c[0]));
+  assert.ok(health, 'health request made');
+  assert.equal(health[1].mode, 'no-cors');
+});
+
+test('health check: a network failure still shows server not responding', async () => {
+  const t = boot('', TOPICS, () => Promise.reject(new TypeError('Failed to fetch')));
+  await new Promise((r) => setTimeout(r, 20));
+  assert.match(t.ids['connection-label'].textContent, /server not responding/);
 });
