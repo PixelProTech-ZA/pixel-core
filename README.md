@@ -125,7 +125,15 @@ Set `API_URL: 'http://127.0.0.1:8787/api/chat'` in `site/config.js` and open htt
 | `TIMEOUT_MS` | var | 20000 | Provider timeout |
 | `HISTORY_MESSAGES` | var | 8 | Conversation turns sent to the model |
 | `RATE_LIMIT_PER_MIN` | var | 20 | Per-IP, in-memory (see above) |
+| `DAILY_CAP` | var | 200 | Global chat requests per UTC day. Enforced only when the `USAGE` KV binding exists (see `wrangler.toml`). Set it below your Gemini quota |
+| `USAGE` | KV binding | not bound | Optional. Holds the daily counter. Approximate, not exact accounting; fails open if KV errors |
 | `ALLOW_NO_ORIGIN` | var | off | `true` allows requests with no `Origin` header (local curl testing only) |
+
+## Topic links (for WhatsApp / Facebook posts)
+`https://pixelprotech-za.github.io/pixel-core/?t=slow-startup` opens the app with that question already in the box.
+The person still taps Send, so a link cannot fire a request on its own. Only keys listed in `TOPICS` in `site/config.js`
+work; anything else in the URL (including `?q=`) is ignored. To add a topic, add one line to `TOPICS`, republish `site/`,
+and bump `CACHE_NAME` in `site/sw.js` so installed copies refresh.
 
 ## How it behaves
 - **Answers:** 🔍 Answer · 🛠️ Steps · 🔗 Useful URLs · ⚠️ Caution, under ~250 words, with exact commands where justified.
@@ -151,6 +159,8 @@ Run on the build machine, Oct 2026.
 | `cd worker && npm test` — 34 unit tests (Node 22) | **34 / 34 passed** | The Gemini provider is **mocked**. Covers: answer returned; system prompt/model/key sent; history trimming; empty/whitespace/oversized/invalid messages; client `system` role rejected; invalid JSON; unsupported methods; wrong content type; unapproved/missing origin; preflight; missing and invalid key → safe errors with no leak; provider 429 → neutral message + Retry-After; timeout → 504; provider 500/network/malformed → safe 502; link guard; per-IP limiter; concurrency cap; `/health` leaks nothing; renderer escapes HTML and refuses `javascript:` links; no unsafe HTML APIs in site code; no key-like strings in `site/`. |
 | Browser UI test — 52 checks, Chromium via Playwright, desktop 1280×800 and mobile 390×780 | **52 / 52 passed** | Server responses mocked. Covers: welcome, counter, empty send ignored, hostile answer rendered as text (no script runs), safe links, history carried, 429/503/offline/timeout messages with input restored and UI unlocked, over-limit blocked, clear chat, example chips, no horizontal overflow, no page errors, page works under its strict CSP. |
 | `wrangler dev` smoke test | **Not run successfully** | The local Workers runtime is blocked by this system's GLIBC compatibility. Do not treat local runtime checks as passed. |
+
+**Update, 17 Oct 2026:** `cd worker && npm test` now runs **42 / 42 passing** (Node, provider mocked). Added: 5 daily-cap tests (fake KV), 3 topic-link tests (fake DOM, no browser). The older "no secrets in site/" test was already failing before this change because `site/icons/` is a folder; it now scans recursively and skips PNGs. The browser (Playwright) suite above was **not re-run** for this update.
 
 ### Not run (be aware)
 - **No real Gemini chat completion verified yet** — the API key was accepted by the model-list endpoint, but a real answer, model response, quota behaviour and latency remain unverified. Check these after deploying the Worker.

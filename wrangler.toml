@@ -1,0 +1,32 @@
+name = "pixel-core-api"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+
+# Public, non-secret settings. The API key is NOT here — it is an encrypted
+# secret:  npx wrangler secret put GEMINI_API_KEY
+[vars]
+# Origin ONLY (scheme + host, no path, no trailing slash). Comma-separate to
+# allow more than one, e.g. "https://you.github.io,http://localhost:8080".
+ALLOWED_ORIGIN = "https://pixelprotech-za.github.io"
+
+# Check what your Gemini account can use first (see README step 6), then set it.
+GEMINI_MODEL = "gemini-2.5-flash"
+
+# Optional tuning (defaults shown). Lower these to stretch the free tier.
+MAX_TOKENS = "700"
+TIMEOUT_MS = "20000"
+HISTORY_MESSAGES = "8"
+RATE_LIMIT_PER_MIN = "20"
+
+# Global daily cap on chat requests (UTC day). Only enforced once the USAGE KV
+# binding below exists. Set it BELOW your Gemini quota, then check the quota
+# in Google AI Studio and adjust.
+DAILY_CAP = "200"
+
+# To switch the daily cap on:
+#   1. cd worker && npx wrangler kv namespace create USAGE
+#   2. paste the id it prints below and remove the leading "# " on these 3 lines
+#   3. npx wrangler deploy
+# [[kv_namespaces]]
+# binding = "USAGE"
+# id = "PASTE_KV_NAMESPACE_ID_HERE"
