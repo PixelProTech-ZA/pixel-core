@@ -1,0 +1,23 @@
+#pc-install-btn {
+  position: fixed; right: 16px; bottom: 16px; z-index: 1000;
+  padding: 10px 16px; border: 0; border-radius: 8px; cursor: pointer;
+  background: #14d9b5; color: #05080d;
+  font: 600 12px/1 ui-monospace, "JetBrains Mono", monospace; letter-spacing: .12em;
+  box-shadow: 0 4px 18px rgba(20, 217, 181, .35);
+  margin-bottom: env(safe-area-inset-bottom, 0);
+}
+#pc-install-btn:hover { filter: brightness(1.1); }
+#pc-ios-sheet {
+  position: fixed; inset: 0; z-index: 1001; display: flex; align-items: flex-end;
+  justify-content: center; background: rgba(0,0,0,.6);
+}
+#pc-ios-sheet[hidden], #pc-install-btn[hidden] { display: none; }
+#pc-ios-sheet .pc-card {
+  width: min(420px, 100%); margin: 16px; padding: 18px; border-radius: 12px;
+  background: #0b1118; color: #e6edf3; border: 1px solid #7c3aed;
+  font: 14px/1.6 system-ui, sans-serif;
+}
+#pc-ios-sheet button {
+  margin-top: 8px; padding: 8px 14px; border: 0; border-radius: 6px;
+  background: #14d9b5; color: #05080d; font-weight: 600; cursor: pointer;
+}
