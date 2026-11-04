@@ -23,6 +23,7 @@
   var busy = false;
   var lastSend = 0;
   var controller = null;
+  var currentRun = null;
 
   var WELCOME =
     'Hello 👋 I\'m Pixel Core, a concise technology answer engine from PixelProTech Solutions.\n\n' +
@@ -99,12 +100,8 @@
 
     setConnection('checking', 'Checking Pixel Core server…');
 
-    // mode 'no-cors': /health sends no CORS headers, so the browser would hide the
-    // reply and report a false "server not responding". An opaque response means
-    // the server was reached; real errors still show up when a question is sent.
     fetch(url, {
       method: 'GET',
-      mode: 'no-cors',
       cache: 'no-store',
       credentials: 'omit',
       referrerPolicy: 'no-referrer',
@@ -112,7 +109,7 @@
     })
       .then(function (res) {
         if (healthCheck !== activeCheck) return;
-        if (res.ok || res.type === 'opaque') {
+        if (res.ok) {
           setConnection('connected', 'Pixel Core server reachable');
         } else {
           setConnection('error', 'Network available · server returned ' + res.status);
@@ -161,9 +158,6 @@
   }
 
   function errorFor(status, code, serverMsg) {
-    if (code === 'daily_cap_reached') {
-      return serverMsg || 'Pixel Core has reached today\'s free limit. Please try again tomorrow.';
-    }
     if (code === 'provider_rate_limited' || (status === 429 && code !== 'rate_limited')) {
       return 'Pixel Core has reached its free usage limit for now. Please try again in a little while.';
     }
@@ -171,7 +165,7 @@
     if (status === 403) return 'This site is not allowed to use the Pixel Core server. The site owner needs to check the server\'s allowed-origin setting.';
     if (status === 413 || status === 400) return serverMsg || 'That message could not be sent. Try a shorter question.';
     if (status === 504) return 'The answer took too long. Please try again.';
-    if (status === 503 || status >= 500) return 'Pixel Core is unavailable right now. Please try again later.';
+    if (status === 503 || status >= 500) return 'Pixel Core could not answer just now. Your question is still in the box. Tap Send to try again.';
     return serverMsg || 'Something went wrong. Please try again.';
   }
 
@@ -181,6 +175,89 @@
       return p.protocol === 'https:' || p.protocol === 'http:';
     } catch (e) { return false; }
   }
+
+  // ---- silent retry -------------------------------------------------------
+  // The first request after a quiet spell can hit a cold or briefly unhappy
+  // upstream. A second attempt a moment later almost always works, so transient
+  // failures are retried quietly and the person only sees a notice if every
+  // attempt fails.
+  var RETRY_DELAYS = [1200, 2600]; // ms to wait before retry 1 and retry 2
+  var RETRY_DEADLINE = 40000;      // never start a retry once this much time has passed
+
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function jitter(ms) { return ms + Math.floor(Math.random() * 400); }
+
+  // How many silent retries a failure deserves. Only transient failures get any.
+  function retryBudget(r) {
+    if (r.code === 'client_timeout') return 0;               // already waited the full time
+    if (r.status === 0) return navigator.onLine ? 2 : 0;     // dropped connection; pointless when offline
+    if (r.code === 'provider_rate_limited' || (r.status === 429 && r.code !== 'rate_limited')) return 1;
+    if (r.status === 429) return 0;                          // our own per-IP limiter: retrying makes it worse
+    if (r.status >= 500) return 2;                           // busy / upstream hiccup / empty answer
+    return 0;                                                // 4xx: retrying will not change the outcome
+  }
+
+  // One request. Never rejects: always resolves to a plain result object.
+  function attempt(payload) {
+    var ctrl = new AbortController();
+    controller = ctrl;
+    var timedOut = false;
+    var timer = setTimeout(function () { timedOut = true; ctrl.abort(); }, TIMEOUT);
+
+    return fetch(cfg.API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+      signal: ctrl.signal,
+      credentials: 'omit',
+      referrerPolicy: 'no-referrer',
+    })
+      .then(function (res) {
+        return res.text().then(function (raw) {
+          var data = null;
+          try { data = JSON.parse(raw); } catch (e) { /* non-JSON body */ }
+          if (!res.ok) {
+            return {
+              ok: false,
+              status: res.status,
+              code: data && data.error && data.error.code,
+              msg: data && data.error && data.error.message
+            };
+          }
+          if (!data || typeof data.reply !== 'string' || !data.reply.trim()) {
+            return { ok: false, status: 502, code: 'unreadable_answer' };
+          }
+          return { ok: true, reply: data.reply };
+        });
+      })
+      .catch(function (e) {
+        if (e && e.name === 'AbortError') {
+          return timedOut ? { ok: false, status: 504, code: 'client_timeout' } : { ok: false, aborted: true };
+        }
+        return { ok: false, status: 0, code: 'network' };
+      })
+      .then(function (r) { clearTimeout(timer); return r; });
+  }
+
+  function sendWithRetry(payload, state, onRetrying) {
+    var started = Date.now();
+    var retries = 0;
+    function go() {
+      return attempt(payload).then(function (r) {
+        if (state.cleared) return { ok: false, cleared: true };
+        if (r.ok || r.aborted) return r;
+        if (retries >= retryBudget(r) || Date.now() - started > RETRY_DEADLINE) return r;
+        var delay = jitter(RETRY_DELAYS[retries] || RETRY_DELAYS[RETRY_DELAYS.length - 1]);
+        retries++;
+        if (retries === 1 && onRetrying) onRetrying();
+        return wait(delay).then(function () {
+          return state.cleared ? { ok: false, cleared: true } : go();
+        });
+      });
+    }
+    return go();
+  }
+
 
   function ask(text) {
     if (busy) return;
@@ -211,8 +288,8 @@
     var pending = addMessage('bot', 'Working on it…');
     pending.querySelector('.who').textContent = 'Pixel Core';
 
-    controller = new AbortController();
-    var timer = setTimeout(function () { controller.abort(); }, TIMEOUT);
+    var state = { cleared: false };
+    currentRun = state;
 
     function fail(msg) {
       history.pop(); // the failed question is not part of the conversation
@@ -223,40 +300,22 @@
       autosize();
     }
 
-    fetch(cfg.API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: history.slice(-HISTORY) }),
-      signal: controller.signal,
-      credentials: 'omit',
-      referrerPolicy: 'no-referrer',
+    var payload = JSON.stringify({ messages: history.slice(-HISTORY) });
+
+    sendWithRetry(payload, state, function () {
+      var b = pending.querySelector('.body');
+      if (b) b.textContent = 'Still working on it…'; // calm, not an error
     })
-      .then(function (res) {
-        return res.text().then(function (raw) {
-          var data = null;
-          try { data = JSON.parse(raw); } catch (e) { /* non-JSON body */ }
-          if (!res.ok) {
-            setConnection('connected', 'Pixel Core server responded');
-            var code = data && data.error && data.error.code;
-            var msg = data && data.error && data.error.message;
-            fail(errorFor(res.status, code, msg));
-            return;
-          }
-          if (!data || typeof data.reply !== 'string' || !data.reply.trim()) {
-            fail('Pixel Core sent back an unreadable answer. Please try again.');
-            return;
-          }
+      .then(function (r) {
+        if (state.cleared || r.cleared) return;
+        if (r.ok) {
           setConnection('connected', 'Pixel Core server reachable');
-          history.push({ role: 'assistant', content: data.reply });
+          history.push({ role: 'assistant', content: r.reply });
           pending.remove();
-          addMessage('bot', data.reply);
-        });
-      })
-      .catch(function (e) {
-        if (e && e.name === 'AbortError') {
-          if (controller && controller.cleared) return; // user cleared the chat: nothing to report
-          fail('The answer took too long. Please try again.');
-        } else {
+          addMessage('bot', r.reply);
+          return;
+        }
+        if (r.status === 0) {
           if (!navigator.onLine) {
             setConnection('offline', 'Device offline · your question is ready to retry');
           } else {
@@ -265,10 +324,16 @@
           fail(navigator.onLine
             ? 'Cannot reach Pixel Core. Your question is still here. Check your connection and retry.'
             : 'Your device is offline. Your question is still here. Reconnect, then retry.');
+          return;
         }
+        setConnection('connected', 'Pixel Core server responded');
+        fail(errorFor(r.status, r.code, r.msg));
+      })
+      .catch(function () {
+        if (!state.cleared) fail('Something went wrong. Please try again.');
       })
       .then(function () {
-        clearTimeout(timer);
+        if (state.cleared) return; // the chat was cleared; a newer request may own the UI now
         setBusy(false);
         input.focus();
       });
@@ -290,7 +355,9 @@
   });
 
   clearBtn.addEventListener('click', function () {
-    if (controller && busy) { controller.cleared = true; controller.abort(); }
+    if (currentRun) currentRun.cleared = true;
+    if (controller) controller.abort();
+    setBusy(false);
     history = [];
     while (chat.firstChild) chat.removeChild(chat.firstChild);
     examples.hidden = false;
@@ -301,22 +368,7 @@
     input.focus();
   });
 
-  // Topic link (?t=key): load an approved question into the box. Never auto-sends.
-  function loadTopicFromLink() {
-    var key;
-    try { key = new URLSearchParams(window.location.search).get('t'); } catch (e) { return; }
-    var topics = cfg.TOPICS || {};
-    if (!key || !Object.prototype.hasOwnProperty.call(topics, key)) return;
-    var q = topics[key];
-    if (typeof q !== 'string' || !q || q.length > MAX_CHARS) return;
-    input.value = q;
-    updateCounter();
-    autosize();
-    addMessage('bot', 'Your question is loaded below. Tap Send when you are ready.');
-  }
-
   showWelcome();
-  loadTopicFromLink();
   updateCounter();
   checkServer();
 })();
