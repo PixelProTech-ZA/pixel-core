@@ -142,6 +142,14 @@ textarea::placeholder { color: #6f6788; }
 .btn.primary:hover { background: #12e6bd; }
 .btn.ghost { background: transparent; color: var(--text-3); border: 1px solid var(--line); }
 .btn.ghost:hover { color: var(--text); border-color: var(--text-3); }
+
+/* ---- install app ---- */
+.install-row { margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.install-row[hidden], .btn.install[hidden], .install-help[hidden] { display: none; }
+.btn.install { background: transparent; color: var(--teal); border: 1px solid var(--teal); }
+.btn.install:hover { background: rgba(0, 212, 170, .1); color: var(--text); }
+.btn.install:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
+.install-help { margin: 0; font-size: .88rem; color: var(--text-3); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 .btn:focus-visible, .chip:focus-visible, .body a:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
 
